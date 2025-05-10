@@ -2,45 +2,41 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { ConfigService } from '@nestjs/config';
-
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  //  private configService: ConfigService
+    private userRepo: Repository<User>,
+    private jwtService: JwtService,
   ) {}
 
-  async register(username: string, password: string, role: 'user' | 'admin' = 'user') {
-    const existing = await this.usersRepository.findOne({ where: { username } });
-    if (existing) {
-      throw new Error('Username already exists');
-    }
-
-    const hashed = await bcrypt.hash(password, 10);
-    const user = this.usersRepository.create({ username, password: hashed, role });
-    return this.usersRepository.save(user);
+  async register(dto: RegisterDto) {
+    const existing = await this.userRepo.findOne({ where: { username: dto.username } });
+    if (existing) throw new UnauthorizedException('User already exists');
+    
+    const hashed = await bcrypt.hash(dto.password, 10);
+    const user = this.userRepo.create({ ...dto, password: hashed });
+    await this.userRepo.save(user);
+    return { message: 'User registered successfully' };
   }
 
-  async login(username: string, password: string) {
-    const user = await this.usersRepository.findOne({ where: { username } });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+  async login(dto: LoginDto) {
+    const user = await this.userRepo.findOne({ where: { username: dto.username } });
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // In real use: return JWT token here
-    return {
-      message: 'Login successful',
-      user: { id: user.id, username: user.username, role: user.role },
-    };
+    const payload = { username: user.username, sub: user.id, role: user.role };
+    const token = this.jwtService.sign(payload);
+    return { access_token: token };
   }
 
   async findAll() {
-    return this.usersRepository.find();
+    return this.userRepo.find();
   }
-
-  
 }

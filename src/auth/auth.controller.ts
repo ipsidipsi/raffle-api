@@ -1,24 +1,33 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body,Get,UseGuards,Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() body: { username: string; password: string; role?: string }) {
-    const validRoles = ['user', 'admin'];
-    const role = validRoles.includes(body.role ?? '') ? body.role! : 'user';
-    return this.authService.register(body.username, body.password, role as 'user' | 'admin');
+  register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 
   @Post('login')
-  async login(@Body() body: { username: string; password: string }) {
-    return this.authService.login(body.username, body.password);
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
-
+@UseGuards(JwtAuthGuard)
   @Get('all')
   findAll() {
     return this.authService.findAll();
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('test-protected')
+  getProtected() {
+  return { message: 'You are authenticated!' };
+}
+
 }
