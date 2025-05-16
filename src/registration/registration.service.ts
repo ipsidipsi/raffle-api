@@ -1,7 +1,7 @@
 // src/registration/registration.service.ts
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { Registrant } from './entities/registrants.entity';
 import { CreateRegistrantDto } from './dto/create-registrant.dto';
 import { AccountMaster } from '../accountmaster/entities/accountmaster.entity';
@@ -14,6 +14,7 @@ export class RegistrationService {
 
     @InjectRepository(AccountMaster)
     private readonly accountMasterRepo: Repository<AccountMaster>,
+    
   ) {}
 
   async register(dto: CreateRegistrantDto) {
@@ -66,5 +67,79 @@ async deleteRegistrant(accountNumber: string): Promise<string> {
   
   async findAll(){
     return this.registrantRepo.find();
+  }
+  
+  // async searchAccountMaster(term: string): Promise<AccountMaster[]> {
+  //   return this.accountMasterRepo.find({
+  //     where: [
+  //       { accountNumber: Like(`%${term}%`) },
+  //      // { meterNumber: Like(`%${term}%`) },
+  //      // { consumerName: Like(`%${term}%`) },
+  //     ],
+  //     take: 10, // Optional: limit results
+  //   });
+  // }
+
+  // async searchRegistrant(term: string): Promise<Registrant[]> {
+  //   return this.registrantRepo.find({
+  //     where: [
+  //       { accountNumber: Like(`%${term}%`) },
+  //      // { meterNumber: Like(`%${term}%`) },
+  //      // { consumerName: Like(`%${term}%`) },
+  //     ],
+  //     take: 10, // Optional: limit results
+  //   });
+  // }
+  
+  async searchAccountMaster(field: 'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber',term: string, ): Promise<AccountMaster[]> {
+    const query = this.accountMasterRepo.createQueryBuilder('accountMaster');
+
+    switch (field) {
+      case 'accountNumber':
+        query.where('accountMaster.accountNumber LIKE :term', { term: `%${term}%` });
+        break;
+      case 'meterNumber':
+        query.where('accountMaster.meterNumber LIKE :term', { term: `%${term}%` });
+        break;
+      case 'consumerName':
+        query.where('accountMaster.consumerName LIKE :term', { term: `%${term}%` });
+        break;
+      default:
+        throw new Error('Invalid search field');
+    }
+
+    const results = await query.take(10).getMany();
+
+    if (results.length === 0) {
+      throw new NotFoundException('No results found');
+    }
+
+    return results;
+  }
+
+  async searchRegistrant( field: 'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber',term: string,): Promise<Registrant[]> {
+    const query = this.registrantRepo.createQueryBuilder('registrant');
+
+    switch (field) {
+      case 'accountNumber':
+        query.where('registrant.accountNumber LIKE :term', { term: `%${term}%` });
+        break;
+      case 'meterNumber':
+        query.where('registrant.meterNumber LIKE :term', { term: `%${term}%` });
+        break;
+      case 'consumerName':
+        query.where('registrant.consumerName LIKE :term', { term: `%${term}%` });
+        break;
+      default:
+        throw new Error('Invalid search field');
+    }
+
+    const results = await query.take(10).getMany();
+
+    if (results.length === 0) {
+      throw new NotFoundException('No results found');
+    }
+
+    return results;
   }
 }

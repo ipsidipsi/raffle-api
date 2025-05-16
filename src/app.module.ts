@@ -10,6 +10,7 @@ import { RegistrationModule } from './registration/registration.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
     TypeOrmModule.forRoot({
       type:'mssql',
@@ -18,15 +19,24 @@ import { RegistrationModule } from './registration/registration.module';
      username: process.env.DB_USERNAME,
      password: process.env.DB_PASSWORD,
      database: process.env.DB_DATABASE,
+    // host: 'localhost',
+    //  port: 1433,
+    //  username: 'sa',
+    //  password: 'Iselc01S3rv3r',
+    //  database: 'UBMS',
      autoLoadEntities: true,
      entities: [__dirname + '/**/*.ts'],
      synchronize: false,
      options: {
-       //encrypt: true,
+       encrypt: false,
        enableArithAbort: true,
-       trustServerCertificate: true,
+       trustServerCertificate: false,
      },
-     
+     extra: {
+      trustServerCertificate: false,
+      encrypt: false
+     },
+     requestTimeout: 30000,
     }),
     AuthModule,
     RegistrationModule,
