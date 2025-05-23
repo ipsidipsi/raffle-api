@@ -18,13 +18,19 @@ export class RegistrationService {
   ) {}
 
   async register(dto: CreateRegistrantDto) {
+    // Check if stub exists in registrants table
+
+    const stubs= await this.registrantRepo.findOne({
+      where: { stubNumber: dto.stubNumber },
+    });
     // Check if account exists in accountmaster
+
     const account = await this.accountMasterRepo.findOne({
       where: { accountNumber: dto.accountNumber },
     });
 
     if (!account) {
-      throw new NotFoundException('Account number not found');
+      throw new NotFoundException('Account number not found in master file');
     }
 
     // Prevent duplicate registration
@@ -35,9 +41,13 @@ export class RegistrationService {
     if (existing) {
       throw new ConflictException('Account already registered');
     }
+    if (stubs) {
+      throw new ConflictException('Duplicate stub number');
+    }
 
     // Determine area and district from accountmaster fields
     const registrant = this.registrantRepo.create({
+      stubNumber: dto.stubNumber,
       accountNumber: account.accountNumber,
       meterNumber: account.meterNumber,
       consumerName: account.consumerName,
@@ -117,10 +127,13 @@ async deleteRegistrant(accountNumber: string): Promise<string> {
     return results;
   }
 
-  async searchRegistrant( field: 'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber',term: string,): Promise<Registrant[]> {
+  async searchRegistrant( field:'stubNumber' | 'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber',term: string,): Promise<Registrant[]> {
     const query = this.registrantRepo.createQueryBuilder('registrant');
 
     switch (field) {
+      case 'stubNumber':
+        query.where('registrant.stubNumber LIKE :term', { term: `%${term}%` });
+        break;
       case 'accountNumber':
         query.where('registrant.accountNumber LIKE :term', { term: `%${term}%` });
         break;

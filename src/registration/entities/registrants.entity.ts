@@ -9,8 +9,11 @@ import {
   export class Registrant {
     @PrimaryGeneratedColumn()
     id: number;
-  
-    @Column({ length: 10 })
+
+    @Column({ length: 10,unique: true,nullable: false })
+    stubNumber: string;
+
+    @Column({ length: 10,unique: true,nullable: false })
     accountNumber: string;
   
     @Column({ length: 50, nullable: true })

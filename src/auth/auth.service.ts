@@ -33,7 +33,13 @@ export class AuthService {
 
     const payload = { username: user.username, sub: user.id, role: user.role };
     const token = this.jwtService.sign(payload);
-    return { access_token: token };
+    return { access_token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
+    };
   }
 
   async findAll() {

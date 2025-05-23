@@ -1,4 +1,5 @@
 export class CreateRegistrantDto {
+    stubNumber: string;
     accountNumber: string;
     meterNumber?: string;
     consumerName?: string;

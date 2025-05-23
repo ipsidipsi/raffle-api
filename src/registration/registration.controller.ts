@@ -30,7 +30,7 @@ export class RegistrationController {
   @Get('searchRegistrant')
   async searchRegistrant(
     @Query('term') term: string,
-    @Query('field') field: 'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber'
+    @Query('field') field: 'stubNumber' | 'accountNumber' |'accountNumber' | 'meterNumber' | 'consumerName' = 'accountNumber'
   ) {
     try {
       const results = await this.registrationService.searchRegistrant(field,term);
