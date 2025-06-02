@@ -1,8 +1,11 @@
+import { Draw } from 'src/raffle/entities/draw.entity';
 import {
     Entity,
     PrimaryGeneratedColumn,
     Column,
     CreateDateColumn,
+    JoinColumn,
+    ManyToOne,
   } from 'typeorm';
   
   @Entity('registrants')
@@ -34,8 +37,8 @@ import {
     @Column({ length: 100, nullable: true })
     district: string;
   
-    @CreateDateColumn({ type: 'datetime' })
-    registrationTimestamp: Date;
+  @Column({ type: 'datetime', default: () => 'GETDATE()' })
+  registrationTimestamp: Date;
   
     @Column({ type: 'bit', default: false })
     isWinner: boolean;
@@ -48,5 +51,12 @@ import {
   
     @Column({ length: 50, default: 'pending' })
     status: string;
+     // NEW: Add relationship to Draw
+  @Column({ nullable: true })
+  drawId: number;
+
+  @ManyToOne(() => Draw, draw => draw.winners)
+  @JoinColumn({ name: 'drawId' })
+  draw: Draw;
   }
   

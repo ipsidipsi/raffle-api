@@ -1,3 +1,4 @@
+import { RaffleModule } from './raffle/raffle.module';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -40,6 +41,7 @@ import { RegistrationModule } from './registration/registration.module';
     }),
     AuthModule,
     RegistrationModule,
+    RaffleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
