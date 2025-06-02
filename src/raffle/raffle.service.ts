@@ -1,3 +1,4 @@
+// src/raffle/raffle.service.ts - FIXED VERSION
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -30,11 +31,22 @@ export class RaffleService {
   async getEligibleCount(dto: EligibleCountDto): Promise<EligibleCount[]> {
     try {
       const areaCodesParam = dto.areaCodes?.join(',') || null;
-      const result = await this.dataSource.query(`
-        EXEC [dbo].[sp_GetEligibleRegistrantsByArea] @AreaCodes = ?
-      `, [areaCodesParam]);
+      
+      // Use direct string substitution for SQL Server stored procedure
+      let query: string;
+      if (areaCodesParam) {
+        query = `EXEC [dbo].[sp_GetEligibleRegistrantsByArea] @AreaCodes = '${areaCodesParam}'`;
+      } else {
+        query = `EXEC [dbo].[sp_GetEligibleRegistrantsByArea] @AreaCodes = NULL`;
+      }
+      
+      console.log('Executing query:', query);
+      const result = await this.dataSource.query(query);
+      console.log('Query result:', result);
+      
       return result;
     } catch (error) {
+      console.error('SQL Error in getEligibleCount:', error);
       throw new BadRequestException('Failed to get eligible count: ' + error.message);
     }
   }
@@ -48,25 +60,40 @@ export class RaffleService {
 
       const areaCodesParam = dto.areaCodes?.join(',') || null;
       
-      // Execute the stored procedure
-      const result = await this.dataSource.query(`
-        DECLARE @DrawGuid UNIQUEIDENTIFIER
-        EXEC [dbo].[sp_SelectRandomWinners] 
-          @PrizeName = ?,
-          @NumberOfWinners = ?,
-          @AreaCodes = ?,
-          @CreatedBy = ?,
-          @DrawGuid = @DrawGuid OUTPUT
-        SELECT @DrawGuid as DrawGuid
-      `, [dto.prizeName, dto.numberOfWinners, areaCodesParam, dto.createdBy || 'system']);
+      // Prepare the stored procedure call
+      let query: string;
+      if (areaCodesParam) {
+        query = `
+          DECLARE @DrawGuid UNIQUEIDENTIFIER
+          EXEC [dbo].[sp_SelectRandomWinners] 
+            @PrizeName = '${dto.prizeName.replace(/'/g, "''")}',
+            @NumberOfWinners = ${dto.numberOfWinners},
+            @AreaCodes = '${areaCodesParam}',
+            @CreatedBy = '${(dto.createdBy || 'system').replace(/'/g, "''")}',
+            @DrawGuid = @DrawGuid OUTPUT
+        `;
+      } else {
+        query = `
+          DECLARE @DrawGuid UNIQUEIDENTIFIER
+          EXEC [dbo].[sp_SelectRandomWinners] 
+            @PrizeName = '${dto.prizeName.replace(/'/g, "''")}',
+            @NumberOfWinners = ${dto.numberOfWinners},
+            @AreaCodes = NULL,
+            @CreatedBy = '${(dto.createdBy || 'system').replace(/'/g, "''")}',
+            @DrawGuid = @DrawGuid OUTPUT
+        `;
+      }
+      
+      console.log('Executing draw query:', query);
+      const result = await this.dataSource.query(query);
+      console.log('Draw result:', result);
 
       if (!result || result.length === 0) {
         throw new BadRequestException('No winners were selected. Check if there are enough eligible registrants.');
       }
 
-      // The stored procedure returns the winners directly
-      // But we need to handle the DrawGuid separately if needed
-      const winners = result.filter(row => row.id); // Filter out the DrawGuid result
+      // Filter out any non-winner rows (drawGuid results, etc.)
+      const winners = result.filter(row => row.id && row.accountNumber);
       
       if (winners.length === 0) {
         throw new BadRequestException('Draw execution failed - no winners returned');
@@ -74,6 +101,7 @@ export class RaffleService {
 
       return winners;
     } catch (error) {
+      console.error('Error in executeDraw:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -83,9 +111,10 @@ export class RaffleService {
 
   async getWinnersByDraw(drawGuid: string): Promise<DrawResult[]> {
     try {
-      const result = await this.dataSource.query(`
-        EXEC [dbo].[sp_GetWinnersByDraw] @DrawGuid = ?
-      `, [drawGuid]);
+      const query = `EXEC [dbo].[sp_GetWinnersByDraw] @DrawGuid = '${drawGuid}'`;
+      console.log('Executing getWinnersByDraw query:', query);
+      
+      const result = await this.dataSource.query(query);
 
       if (!result || result.length === 0) {
         throw new NotFoundException(`No winners found for draw ${drawGuid}`);
@@ -93,6 +122,7 @@ export class RaffleService {
 
       return result;
     } catch (error) {
+      console.error('Error in getWinnersByDraw:', error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -106,9 +136,10 @@ export class RaffleService {
         throw new BadRequestException('Status must be either valid_winner or invalid_winner');
       }
 
-      const result = await this.dataSource.query(`
-        EXEC [dbo].[sp_ConfirmWinner] @RegistrantId = ?, @Status = ?
-      `, [dto.registrantId, dto.status]);
+      const query = `EXEC [dbo].[sp_ConfirmWinner] @RegistrantId = ${dto.registrantId}, @Status = '${dto.status}'`;
+      console.log('Executing confirmWinner query:', query);
+      
+      const result = await this.dataSource.query(query);
 
       if (!result || result.length === 0 || result[0].RowsAffected === 0) {
         throw new NotFoundException(`Registrant ${dto.registrantId} not found or not in pending validation status`);
@@ -116,6 +147,7 @@ export class RaffleService {
 
       return result[0];
     } catch (error) {
+      console.error('Error in confirmWinner:', error);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
@@ -129,9 +161,10 @@ export class RaffleService {
         throw new BadRequestException('Status must be either valid_winner or invalid_winner');
       }
 
-      const result = await this.dataSource.query(`
-        EXEC [dbo].[sp_BulkConfirmDraw] @DrawGuid = ?, @Status = ?
-      `, [dto.drawGuid, dto.status]);
+      const query = `EXEC [dbo].[sp_BulkConfirmDraw] @DrawGuid = '${dto.drawGuid}', @Status = '${dto.status}'`;
+      console.log('Executing bulkConfirmDraw query:', query);
+      
+      const result = await this.dataSource.query(query);
 
       if (!result || result.length === 0) {
         throw new NotFoundException(`Draw ${dto.drawGuid} not found`);
@@ -139,6 +172,7 @@ export class RaffleService {
 
       return result[0];
     } catch (error) {
+      console.error('Error in bulkConfirmDraw:', error);
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
