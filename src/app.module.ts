@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RegistrationModule } from './registration/registration.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { RegistrationModule } from './registration/registration.module';
     AuthModule,
     RegistrationModule,
     RaffleModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
