@@ -6,10 +6,34 @@ import { CreateRegistrantDto } from './dto/create-registrant.dto';
 export class RegistrationController {
   constructor(private readonly registrationService: RegistrationService) {}
    
-  @Get('all')
-  findAll() {
-    return this.registrationService.findAll();
-  }
+ @Get('all')
+async findAll(
+  @Query('limit') limit?: number,
+  @Query('offset') offset?: number,
+  @Query('filterType') filterType?: string,
+  @Query('filterValue') filterValue?: string
+) {
+  return this.registrationService.findAll(
+    limit ? parseInt(limit.toString()) : 20,
+    offset ? parseInt(offset.toString()) : 0,
+    filterType,
+    filterValue
+  );
+}
+@Get('search')
+async search(
+  @Query('field') field: string,
+  @Query('term') term: string,
+  @Query('limit') limit?: number,
+  @Query('offset') offset?: number
+) {
+  return this.registrationService.findAll(
+    limit ? parseInt(limit.toString()) : 20,
+    offset ? parseInt(offset.toString()) : 0,
+    field,
+    term
+  );
+}
 
   @Get('searchAccountMaster')
   async searchAccountMaster(

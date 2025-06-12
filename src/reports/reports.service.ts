@@ -104,6 +104,7 @@ export class ReportsService {
       status: draw.status,
       winners: draw.winners?.map(winner => ({
         registrantId: winner.id,
+        stubNumber: winner.stubNumber,
         consumerName: winner.consumerName,
         accountNumber: winner.accountNumber,
         areaCode: winner.area,
@@ -127,7 +128,7 @@ export class ReportsService {
     const confirmedWinners = allWinners.filter(w => w.status === 'confirmed').length;
     const disqualifiedWinners = allWinners.filter(w => w.status === 'disqualified' || w.status === 'invalid').length;
     const pendingWinners = allWinners.filter(w => w.status === 'pending').length;
-    const validWinners = allWinners.filter(w => w.status === 'valid').length;
+    const validWinners = allWinners.filter(w => w.status === 'valid_winner').length;
 
     return {
       raffleDraws,
@@ -162,6 +163,7 @@ export class ReportsService {
           'Total Winners in Draw': draw.totalWinners,
           'Expected Winners': draw.numberOfWinners,
           'Winner ID': winner.registrantId,
+          'Stub Number': winner.stubNumber,
           'Consumer Name': winner.consumerName,
           'Account Number': winner.accountNumber,
           'Meter Number': winner.meterNumber || '',

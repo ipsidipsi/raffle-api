@@ -74,10 +74,77 @@ async deleteRegistrant(accountNumber: string): Promise<string> {
     await this.registrantRepo.remove(existing);
     return `Registrant with account number ${accountNumber} deleted.`;
   }
-  
-  async findAll(){
-    return this.registrantRepo.find();
+
+  async findAll(
+  limit: number = 20, 
+  offset: number = 0,
+  filterType?: string,
+  filterValue?: string
+) {
+  // Add safety limits
+  const safeLimit = Math.min(Math.max(limit, 1), 100); // Between 1-100
+  const safeOffset = Math.max(offset, 0); // No negative offset
+
+ const query = this.registrantRepo.createQueryBuilder('registrant')
+    
+    .orderBy('registrant.registrationTimestamp', 'DESC') // Then by timestamp
+    .addOrderBy('registrant.stubNumber', 'ASC'); // Order by stub number first
+
+   // Apply filtering with exact/starts-with logic
+  if (filterType && filterValue && filterValue.trim()) {
+    const searchTerm = filterValue.trim();
+    
+    switch (filterType.toLowerCase()) {
+      case 'stubnumber':
+        // Exact match for stub numbers
+        query.andWhere('registrant.stubNumber = :exactTerm', { exactTerm: searchTerm });
+        break;
+      case 'accountnumber':
+        // Starts with for account numbers
+        query.andWhere('registrant.accountNumber LIKE :startsWithTerm', { startsWithTerm: `${searchTerm}%` });
+        break;
+      case 'consumername':
+      case 'accountname':
+        // Contains for names
+        query.andWhere('registrant.consumerName LIKE :containsTerm', { containsTerm: `%${searchTerm}%` });
+        break;
+      default:
+        // Search across all fields
+        query.andWhere(
+          '(registrant.stubNumber = :exactTerm OR registrant.accountNumber LIKE :startsWithTerm OR registrant.consumerName LIKE :containsTerm)',
+          { 
+            exactTerm: searchTerm,
+            startsWithTerm: `${searchTerm}%`,
+            containsTerm: `%${searchTerm}%`
+          }
+        );
+    }
   }
+  // Apply pagination
+  query.take(safeLimit).skip(safeOffset);
+
+  // Get both data and total count
+  const [registrants, total] = await query.getManyAndCount();
+
+  return {
+    registrants,
+    total,
+    page: Math.floor(safeOffset / safeLimit) + 1,
+    totalPages: Math.ceil(total / safeLimit),
+    hasMore: safeOffset + safeLimit < total,
+    limit: safeLimit,
+    offset: safeOffset,
+    filter: filterType && filterValue ? { type: filterType, value: filterValue } : null
+  };
+}
+  // async findAll(){
+  //   return this.registrantRepo.find({
+  //     order:{
+  //       registrationTimestamp: 'DESC'
+  //     }
+  //   }
+  //   );
+  // }
   
   // async searchAccountMaster(term: string): Promise<AccountMaster[]> {
   //   return this.accountMasterRepo.find({
@@ -106,19 +173,21 @@ async deleteRegistrant(accountNumber: string): Promise<string> {
 
     switch (field) {
       case 'accountNumber':
-        query.where('accountMaster.accountNumber LIKE :term', { term: `%${term}%` });
+        query.where('accountMaster.accountNumber LIKE :term', { term: `${term}%` })
+        .orderBy('accountMaster.accountNumber', 'ASC');
         break;
       case 'meterNumber':
-        query.where('accountMaster.meterNumber LIKE :term', { term: `%${term}%` });
+        query.where('accountMaster.meterNumber LIKE :term', { term: `${term}%` });
         break;
       case 'consumerName':
-        query.where('accountMaster.consumerName LIKE :term', { term: `%${term}%` });
+        query.where('accountMaster.consumerName LIKE :term', { term: `${term}%` })
+        .orderBy('accountMaster.consumerName', 'ASC');
         break;
       default:
         throw new Error('Invalid search field');
     }
 
-    const results = await query.take(10).getMany();
+    const results = await query.take(5).getMany();
 
     if (results.length === 0) {
       throw new NotFoundException('No results found');
@@ -132,22 +201,25 @@ async deleteRegistrant(accountNumber: string): Promise<string> {
 
     switch (field) {
       case 'stubNumber':
-        query.where('registrant.stubNumber LIKE :term', { term: `%${term}%` });
+        query.where('registrant.stubNumber LIKE :term', { term: `${term}%` })
+        //.orderBy('registrant.stubNumber');
         break;
       case 'accountNumber':
-        query.where('registrant.accountNumber LIKE :term', { term: `%${term}%` });
+        query.where('registrant.accountNumber LIKE :term', { term: `${term}%` })
+       // .orderBy('registrant.registrationTimestamp', 'DESC');
         break;
       case 'meterNumber':
-        query.where('registrant.meterNumber LIKE :term', { term: `%${term}%` });
+        query.where('registrant.meterNumber LIKE :term', { term: `${term}%` });
         break;
       case 'consumerName':
-        query.where('registrant.consumerName LIKE :term', { term: `%${term}%` });
+        query.where('registrant.consumerName LIKE :term', { term: `${term}%` })
+        //.orderBy('registrant.registrationTimestamp', 'DESC');
         break;
       default:
         throw new Error('Invalid search field');
     }
 
-    const results = await query.take(10).getMany();
+    const results = await query.take(5).getMany();
 
     if (results.length === 0) {
       throw new NotFoundException('No results found');
